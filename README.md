@@ -37,6 +37,17 @@ Old sessions are kept until they pass 200 MB, then the oldest go.
 
 Android sends unbound traffic over the default network only. To test Wi-Fi and the car modem separately, pings use an unprivileged ICMP socket bound with `Network.bindSocket`, and DNS, TCP and HTTP use the `Network`'s own resolver, socket factory and `openConnection`. If ICMP sockets are refused, pings fall back to `/system/bin/ping` (default network only). Traceroute always uses the shell ping (default network only), because "time exceeded" replies need the socket error queue.
 
+## Screenshots
+
+Taken on an Android 9 emulator at 1778 × 720 (the head unit's resolution), so there is no car TBOX network. Public IP and location are blacked out.
+
+| | |
+|---|---|
+| ![Overview](docs/overview.png) | ![Wi-Fi](docs/wifi.png) |
+| ![4G modem](docs/4g-modem.png) | ![DNS](docs/dns.png) |
+| ![Ping](docs/ping.png) | ![Traceroute](docs/traceroute.png) |
+| ![External IP](docs/external-ip.png) | ![Report](docs/report.png) |
+
 ## Build
 
 ```sh
@@ -52,6 +63,15 @@ apksigner sign --key platform.pk8 --cert platform.x509.pem --out dist/MG4NetDiag
 apksigner verify --print-certs dist/MG4NetDiag-0.2.0-platform.apk   # SHA-256 c8a2e9bc…92ab8
 ```
 
-## Untested on the car
+## Verified on the car
 
-ICMP ping sockets bound per network, `ping -t` "time exceeded" output on this unit's ping, and the TBOX network's transport type are all assumptions until run on the head unit. The saved report shows which path each ping used.
+From a saved report on an MG4 (AUTUS SAIC, firmware SWI165-29176-1100R11, Android 9, app 0.2.0 platform build):
+
+- The 4G modem is the TBOX: Android reports it as `tbox0`, transport **ETHERNET**, static addressing with the TBOX as gateway and DNS server, ~100 Mbit/s link estimate, metered. The head unit's own telephony reports no modem (OUT_OF_SERVICE).
+- ICMP ping sockets bound to a specific network work (`via ICMP`). `ping_group_range` is `0 2147483647`.
+- The platform build can read `dumpsys` (connectivity, wifi, ethernet, netstats, netpolicy, telephony.registry) and the full `logcat -b all`, with no permission denials. `dumpsys netd` does not exist on this firmware ("Can't find service").
+- Traceroute (`ping -t`) reached 1.1.1.1 in 13 hops with reverse names.
+- Typical results: gateway ~1 ms, internet ~300 ms, DNS lookups 3-7 ms (cached) but 300 ms to 1.1 s for uncached names.
+- The car's traffic exited outside Australia, which is why Australian-only sites can refuse it. The app flags this.
+
+Not yet checked: Wi-Fi tests (the Wi-Fi radio was on but not connected), and the debug build on the car.
